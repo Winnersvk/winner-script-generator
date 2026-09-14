@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import {saveHistory} from '../../../lib/save-history.mjs';
 import {signedIn,sameOrigin,privateHeaders} from '../../../lib/auth';
 import {normalizeProfile,profilePrompt} from '../../../lib/profiles.mjs';
 
@@ -89,7 +90,8 @@ export async function POST(req){
     if(response.status!=='completed'||!response.output_text)return Response.json({error:'AI ยังสร้างคำตอบไม่สมบูรณ์ กรุณาลองอีกครั้ง'},{status:502});
     const parsed = JSON.parse(response.output_text);
     if(!Array.isArray(parsed.directions)||parsed.directions.length!==3)return Response.json({error:'รูปแบบคำตอบไม่ครบ กรุณาลองอีกครั้ง'},{status:502});
-    const {error:historyError}=await db.from('script_history').insert({user_id:user.id,title:(x.topic||x.story).slice(0,200),input:x,output:parsed});
+    const historyError=await saveHistory(db,{user_id:user.id,title:(x.topic||x.story).slice(0,200),input:x,output:parsed});
+    if(historyError)console.error('History save failed',{code:historyError.code,message:historyError.message});
     return Response.json({...parsed,...(historyError?{historyWarning:'สร้างสคริปต์แล้ว แต่บันทึกประวัติไม่สำเร็จ กรุณาคัดลอกผลลัพธ์เก็บไว้'}:{})},{headers:privateHeaders});
   }catch(err){
     console.error('Generation failed', {status:err?.status,code:err?.code});
