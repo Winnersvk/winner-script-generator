@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import {signedIn,sameOrigin,privateHeaders} from '../../../lib/auth';
 import {normalizeProfile,profilePrompt} from '../../../lib/profiles.mjs';
 
 export const maxDuration = 180;
@@ -29,7 +30,10 @@ const schema = {
 };
 
 export async function POST(req){
+  if(!sameOrigin(req))return Response.json({error:'คำขอไม่ถูกต้อง'},{status:403,headers:privateHeaders});
   try{
+    const {db,user}=await signedIn();
+    if(!user)return Response.json({error:'กรุณาเข้าสู่ระบบก่อนสร้างสคริปต์'},{status:401,headers:privateHeaders});
     let x;
     try {
       const raw=await req.text();
@@ -85,7 +89,8 @@ export async function POST(req){
     if(response.status!=='completed'||!response.output_text)return Response.json({error:'AI ยังสร้างคำตอบไม่สมบูรณ์ กรุณาลองอีกครั้ง'},{status:502});
     const parsed = JSON.parse(response.output_text);
     if(!Array.isArray(parsed.directions)||parsed.directions.length!==3)return Response.json({error:'รูปแบบคำตอบไม่ครบ กรุณาลองอีกครั้ง'},{status:502});
-    return Response.json(parsed,{headers:{'Cache-Control':'no-store'}});
+    const {error:historyError}=await db.from('script_history').insert({user_id:user.id,title:(x.topic||x.story).slice(0,200),input:x,output:parsed});
+    return Response.json({...parsed,...(historyError?{historyWarning:'สร้างสคริปต์แล้ว แต่บันทึกประวัติไม่สำเร็จ กรุณาคัดลอกผลลัพธ์เก็บไว้'}:{})},{headers:privateHeaders});
   }catch(err){
     console.error('Generation failed', {status:err?.status,code:err?.code});
     return Response.json({error:err?.status===429?'บริการ AI ถึงขีดจำกัด กรุณาลองภายหลัง':'สร้างสคริปต์ไม่สำเร็จ กรุณาลองอีกครั้ง หรือติดต่อผู้ดูแล'},{status:err?.status===429?429:502});

@@ -2,20 +2,21 @@
 import {useEffect,useRef,useState} from 'react';
 import {normalizeProfile,parseProfiles,profileFields,STORAGE_KEY} from '../lib/profiles.mjs';
 
-export default function ProfilePicker({onChange}) {
+export default function ProfilePicker({onChange,userId}) {
+  const storageKey=STORAGE_KEY+':'+userId;
   const [profiles,setProfiles]=useState([]), [selected,setSelected]=useState('');
   const [draft,setDraft]=useState({}), [message,setMessage]=useState(''), [ready,setReady]=useState(false);
   const dialog=useRef(null), importer=useRef(null);
   useEffect(()=>{
     try {
-      const raw=localStorage.getItem(STORAGE_KEY);
+      const raw=localStorage.getItem(storageKey);
       if(raw){const data=JSON.parse(raw); const list=parseProfiles(raw).map((p,i)=>({...p,id:typeof data.profiles[i].id==='string'?data.profiles[i].id:crypto.randomUUID()}));
         setProfiles(list); const p=list.find(p=>p.id===data.selected); setSelected(p?.id||''); onChange(p||null);}
     }catch{setMessage('อ่านข้อมูลเดิมไม่ได้ กรุณานำเข้าไฟล์สำรอง ข้อมูลเดิมยังไม่ถูกเขียนทับ');}
     setReady(true);
-  },[onChange]);
+  },[onChange,storageKey]);
   function persist(list,id) {
-    try {localStorage.setItem(STORAGE_KEY,JSON.stringify({version:2,profiles:list,selected:id}));}
+    try {localStorage.setItem(storageKey,JSON.stringify({version:2,profiles:list,selected:id}));}
     catch {setMessage('บันทึกไม่สำเร็จ พื้นที่เครื่องเต็มหรือเบราว์เซอร์ไม่อนุญาต');return false;}
     setProfiles(list);setSelected(id);onChange(list.find(p=>p.id===id)||null);return true;
   }
