@@ -47,7 +47,7 @@ export default function Home({user}){
   }
   return <main className="shell">
     <div className="header">
-      <div className="brand"><h1>Winner Script Generator</h1><p>สร้างสคริปต์ Short Video ไทย/ลาว จากเรื่องจริงของลูกค้าและธุรกิจ</p></div>
+      <div className="brand"><h1>MKT Online</h1><p>สร้างสคริปต์ Short Video ไทย/ลาว จากเรื่องจริงของลูกค้าและธุรกิจ</p></div>
       <div className="headerTools"><div className="badge">v2 • Brand Profiles</div><InstallApp/></div>
     </div>
     <AccountBar email={user.email} onOpen={entry=>{setForm({...blank,...entry.input});setData(entry.output);setVariant(0);setError('');}}/>
@@ -107,7 +107,7 @@ export default function Home({user}){
         </div>
       </section>
     </div>
-    <div className="footer">Winner Script Generator • API key ทำงานเฉพาะฝั่ง Server</div>
+    <div className="footer">MKT Online • API key ทำงานเฉพาะฝั่ง Server</div>
   </main>
 }
 

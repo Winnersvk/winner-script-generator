@@ -1,0 +1,2 @@
+import {context,body,json,failure} from '../../../lib/publisher-api';
+export async function POST(req){try{const {db,user}=await context(req,true);const x=await body(req);if(!['image/jpeg','image/png'].includes(x.type)||!Number.isInteger(x.size)||x.size<1||x.size>10485760)throw new Error();const path=user.id+'/'+crypto.randomUUID()+(x.type==='image/png'?'.png':'.jpg');const {data,error}=await db.storage.from('mkt-content').createSignedUploadUrl(path);if(error)throw error;return json({path,token:data.token});}catch(e){return failure(e);}}

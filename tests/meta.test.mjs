@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {publishFacebook} from '../lib/meta-publisher.mjs';
+const input={pageId:'123',accessToken:'test-only',version:'v25.0',caption:'test',imageUrls:['https://example.com/a.jpg']};
+test('publisher requires a real final post id',async()=>{let calls=0;const result=await publishFacebook(input,async()=>({ok:true,json:async()=>({id:++calls===1?'photo':'post'})}));assert.equal(result.platformPostId,'post');assert.equal(calls,2);});
+test('ambiguous final response is never success or automatically retried',async()=>{let calls=0;await assert.rejects(()=>publishFacebook(input,async()=>{if(++calls===2)throw new Error('timeout');return {ok:true,json:async()=>({id:'photo'})};}),e=>e.uncertain===true);assert.equal(calls,2);});
+test('provider errors do not disclose tokens',async()=>{await assert.rejects(()=>publishFacebook(input,async()=>({ok:false,status:400,json:async()=>({error:{code:190,message:'secret test-only'}})})),e=>e.code===190&&!e.message.includes('test-only'));});

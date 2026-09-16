@@ -1,10 +1,11 @@
 import './globals.css';
+import HubNav from './HubNav';
 
 export const metadata = {
-  title: 'Winner Script Generator',
-  description: 'AI Storytelling Script Generator for Thai & Lao short-form video',
+  title: 'MKT Online',
+  description: 'ระบบจัดการการตลาดออนไลน์',
   manifest: '/manifest.webmanifest',
-  appleWebApp: {capable:true,statusBarStyle:'black-translucent',title:'Winner Script'},
+  appleWebApp: {capable:true,statusBarStyle:'black-translucent',title:'MKT Online'},
   icons: {icon:'/icon-192.png',apple:'/icon-192.png'}
 };
 
@@ -13,7 +14,7 @@ export const viewport = {width:'device-width',initialScale:1,viewportFit:'cover'
 export default function RootLayout({ children }) {
   return (
     <html lang="th">
-      <body>{children}</body>
+      <body><HubNav/>{children}</body>
     </html>
   );
 }

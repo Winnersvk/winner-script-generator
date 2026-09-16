@@ -15,4 +15,4 @@ export async function middleware(req){
   await db.auth.getUser();
   return response;
 }
-export const config={matcher:['/','/admin','/login','/api/:path*']};
+export const config={matcher:['/','/admin','/scripts','/publisher','/queue','/calendar','/brands','/settings','/login','/api/:path*']};

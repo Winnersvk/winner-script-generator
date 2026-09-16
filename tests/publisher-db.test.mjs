@@ -1,0 +1,14 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+test('publisher enforces member isolation, approval, stale revisions and honest publication',async()=>{
+ const db=new PGlite();const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',brand='33333333-3333-4333-8333-333333333333',post='44444444-4444-4444-8444-444444444444';
+ await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);insert into auth.users values('${a}'),('${b}');create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('test.uid',true),'')::uuid $$;create function public.is_app_admin() returns boolean language sql as $$ select current_setting('test.admin',true)='true' $$;create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(bucket_id text,name text);alter table storage.objects enable row level security;create function storage.foldername(text) returns text[] language sql as $$select string_to_array($1,'/')$$;grant usage on schema auth,storage to authenticated;`);
+ await db.exec(await readFile(new URL('../supabase/publisher.sql',import.meta.url),'utf8'));
+ await db.exec(`set role authenticated;set test.uid='${a}';set test.admin='false';insert into mkt_brands(id,owner_id,data) values('${brand}','${a}','{"pageName":"Test"}');`);
+ const save=async(action,revision,caption='Caption',owner=a)=>db.query('select * from mkt_save_post($1,$2,$3,$4,$5::jsonb,$6,$7,now()+interval \'1 day\')',[post,revision,brand,caption,JSON.stringify([owner+'/55555555-5555-4555-8555-555555555555.jpg']),'story',action]);
+ await save('draft',0);await assert.rejects(()=>save('scheduled',1),/APPROVAL_REQUIRED/);await assert.rejects(()=>save('draft',0),/CONFLICT/);
+ await db.exec(`set test.uid='${b}'`);assert.equal((await db.query('select * from mkt_posts')).rows.length,0);assert.equal((await db.query('select * from mkt_brands')).rows.length,0);await assert.rejects(()=>save('draft',1),/FORBIDDEN/);
+ await db.exec(`set test.uid='${a}'`);await save('pending',1);await assert.rejects(()=>save('approve',2),/FORBIDDEN/);await db.exec("set test.admin='true'");await save('approve',2);await db.exec("set test.admin='false'");await assert.rejects(()=>save('scheduled',3,'changed'),/APPROVAL_REQUIRED/);await save('scheduled',3);await assert.rejects(()=>save('published',4),/INVALID_ACTION/);await assert.rejects(()=>db.exec("update mkt_posts set status='published'"),/permission denied/);await save('cancel',4);assert.equal((await db.query('select status,scheduled_at from mkt_posts')).rows[0].scheduled_at,null);await db.close();
+});
