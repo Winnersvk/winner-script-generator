@@ -46,3 +46,17 @@ requirements before activation. No real Facebook content has been published by t
 `npm test` includes SQL/RLS integration tests using PGlite, Bangkok dates, profiles,
 history retries and simulated Meta responses. `npm run build` checks production compilation.
 Live acceptance still requires a signed-in account and configured production AI key.
+
+## Deployment verification — 2026-09-16
+- Additive migration applied successfully to original Supabase project.
+- Vercel production deployment for commit 944384c13095265b55c20e719efc8b9c994c7693 succeeded.
+- Live original profile synced to the account; original generator returned three directions.
+- A clearly labeled test draft was saved and reopened from the queue.
+- Anonymous and cross-origin API checks passed for original and new endpoints.
+- Mobile viewport checked: document width and scroll width both 375 px.
+- Unit/integration checks: 13 tests plus 2 generator regression tests passed.
+- Dependency audit: zero reported vulnerabilities after the PostCSS patch override.
+- Browser automation file upload blocked by the Chrome extension file-URL permission.
+  Actual image upload, live AI caption, and live scheduling acceptance remain to be completed.
+- Meta OAuth/page linking and durable automatic delivery are NOT implemented/activated.
+  The tested adapter is a preparation layer, not a complete publishing service.
