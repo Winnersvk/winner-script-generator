@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test tests/profiles.test.mjs tests/report-filters.test.mjs tests/save-history.test.mjs tests/publisher.test.mjs tests/publisher-db.test.mjs tests/meta.test.mjs tests/pwa.test.mjs"
+    "test": "node --test tests/create-employee.test.mjs tests/profiles.test.mjs tests/report-filters.test.mjs tests/save-history.test.mjs tests/publisher.test.mjs tests/publisher-db.test.mjs tests/meta.test.mjs tests/pwa.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

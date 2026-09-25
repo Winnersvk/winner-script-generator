@@ -1,5 +1,25 @@
 # MKT Online — original app extension
 
+## Employee account creation
+
+Administrators can open Settings → จัดการผู้ใช้ / สร้างบัญชีพนักงาน
+(`/admin/users`) and enter a name, email, and a 12–128 character password.
+New accounts are ordinary members, confirmed immediately, and can sign in using
+the existing login form. The administrator shares the credentials personally;
+this flow does not send email or grant administrator privileges.
+
+Before deployment, add `SUPABASE_SECRET_KEY` (or legacy
+`SUPABASE_SERVICE_ROLE_KEY`) to the Vercel server environment using a secret key
+from the existing Supabase project, then redeploy. Never use a `NEXT_PUBLIC_`
+prefix for this secret. Keep public signup disabled. No SQL migration is needed.
+The page and API both verify the existing administrator role; the API also
+checks request origin before accessing the privileged Supabase client.
+
+Acceptance: sign in as an existing administrator, create an authorized test
+employee, then sign in as that employee in a separate browser session. Confirm
+that the employee can use scripts and cannot open `/admin/users` or create users.
+Production acceptance for this addition has not yet been performed.
+
 Production remains the existing Vercel project and `https://mkt.winnersign.com`.
 Existing authentication, administrators, script history, and script generation are retained.
 Backup: `../winner-before-mkt-publisher-20260916.zip` (no secrets).

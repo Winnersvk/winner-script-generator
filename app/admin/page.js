@@ -7,5 +7,5 @@ export default async function Admin(){
  if(!user)redirect('/login');
  const {data,error}=await db.rpc('is_app_admin');
  if(error||!data)redirect('/');
- return <Report/>;
+ return <><div className="shell"><a href="/admin/users">จัดการผู้ใช้ / สร้างบัญชีพนักงาน</a></div><Report/></>;
 }
