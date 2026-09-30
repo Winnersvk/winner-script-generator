@@ -1,5 +1,24 @@
 # MKT Online — original app extension
 
+## Shared administrator brand profiles
+
+Apply `supabase/shared-brands.sql` after the existing admin and publisher migrations,
+before deploying this change. It is transactional and can be rerun. Existing
+admin-owned profiles become readable by all authenticated employees in this
+single-company application without copying records. Owners alone can edit their
+profiles. Employees can use shared brands for scripts, captions and their own
+posts; post approval, private employee profiles and media isolation remain intact.
+This does not share Facebook credentials or enable Facebook publishing.
+Keep public signup disabled: authenticated users are owner-provisioned staff.
+
+The browser marks shared profiles read-only and never uploads cached shared
+profiles as employee-owned records. Admin profiles stored only in a browser must
+first sync by opening Brands while signed in as that admin on that browser.
+
+Verification: `tests/shared-brands.test.mjs` exercises existing-data visibility,
+caption-style reads, post creation, ownership takeover rejection, private-data
+isolation, approval, admin edits, revoked sharing and cache synchronization.
+
 ## Employee account creation
 
 Administrators can open Settings → จัดการผู้ใช้ / สร้างบัญชีพนักงาน

@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {normalizeProfile,parseProfiles,profileFields,STORAGE_KEY} from '../lib/profiles.mjs';
+import {pendingProfiles} from '../lib/profile-sync.mjs';
 
 export default function ProfilePicker({onChange,userId}) {
   const storageKey=STORAGE_KEY+':'+userId;
@@ -10,32 +11,33 @@ export default function ProfilePicker({onChange,userId}) {
   useEffect(()=>{
     try {
       const raw=localStorage.getItem(storageKey);
-      if(raw){const data=JSON.parse(raw); const list=parseProfiles(raw).map((p,i)=>({...p,id:typeof data.profiles[i].id==='string'?data.profiles[i].id:crypto.randomUUID()}));
+      if(raw){const data=JSON.parse(raw); const list=parseProfiles(raw).map((p,i)=>({...p,id:typeof data.profiles[i].id==='string'?data.profiles[i].id:crypto.randomUUID(),canEdit:data.profiles[i].canEdit!==false}));
         setProfiles(list); const p=list.find(p=>p.id===data.selected); setSelected(p?.id||''); onChange(p||null);}
     }catch{setMessage('อ่านข้อมูลเดิมไม่ได้ กรุณานำเข้าไฟล์สำรอง ข้อมูลเดิมยังไม่ถูกเขียนทับ');}
     let cancelled=false;
     (async()=>{try{
       const r=await fetch('/api/brands');const j=await r.json();if(!r.ok)throw new Error();
       let saved={profiles:[],selected:''};try{saved=JSON.parse(localStorage.getItem(storageKey)||'{}');}catch{localStorage.setItem(storageKey+':recovery',localStorage.getItem(storageKey)||'');}
-      const pending=JSON.parse(localStorage.getItem(storageKey+':pending')||'[]');const cloud=j.profiles;const missing=(saved.profiles||[]).filter(p=>pending.includes(p.id)||!cloud.some(c=>c.id===p.id));
+      const pending=JSON.parse(localStorage.getItem(storageKey+':pending')||'[]');const cloud=j.profiles;const missing=pendingProfiles(saved.profiles||[],pending,cloud);
       if(missing.length){const sync=await fetch('/api/brands',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profiles:missing})});if(!sync.ok)throw new Error();localStorage.removeItem(storageKey+':pending');}
       if(cancelled)return;const list=[...cloud.filter(c=>!missing.some(p=>p.id===c.id)),...missing];const chosen=list.find(p=>p.id===saved.selected);
       localStorage.setItem(storageKey,JSON.stringify({version:2,profiles:list,selected:chosen?.id||''}));
-      setProfiles(list);setSelected(chosen?.id||'');onChange(chosen||null);setMessage('โปรไฟล์เชื่อมกับบัญชีแล้ว');
+      setProfiles(list);setSelected(chosen?.id||'');onChange(chosen||null);setMessage('โหลดเพจของคุณและเพจที่ผู้ดูแลแชร์แล้ว');
     }catch{if(!cancelled)setMessage('ยังเชื่อมโปรไฟล์บนบัญชีไม่ได้ ข้อมูลในเครื่องยังใช้สร้างสคริปต์ได้');}finally{if(!cancelled)setReady(true);}})();
     return ()=>{cancelled=true;};
   },[onChange,storageKey]);
   function persist(list,id) {
     try {localStorage.setItem(storageKey,JSON.stringify({version:2,profiles:list,selected:id}));}
     catch {setMessage('บันทึกไม่สำเร็จ พื้นที่เครื่องเต็มหรือเบราว์เซอร์ไม่อนุญาต');return false;}
-    const changed=list.filter(p=>JSON.stringify(p)!==JSON.stringify(profiles.find(x=>x.id===p.id)));
+    const changed=list.filter(p=>p.canEdit!==false&&JSON.stringify(p)!==JSON.stringify(profiles.find(x=>x.id===p.id)));
     if(changed.length){const pending=JSON.parse(localStorage.getItem(storageKey+':pending')||'[]');localStorage.setItem(storageKey+':pending',JSON.stringify([...new Set([...pending,...changed.map(p=>p.id)])]));}
     if(changed.length)fetch('/api/brands',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profiles:changed})}).then(r=>{if(!r.ok)throw new Error();const pending=JSON.parse(localStorage.getItem(storageKey+':pending')||'[]');const latest=JSON.parse(localStorage.getItem(storageKey)||'{}');localStorage.setItem(storageKey+':pending',JSON.stringify(pending.filter(id=>!changed.some(p=>p.id===id&&JSON.stringify(p)===JSON.stringify((latest.profiles||[]).find(x=>x.id===id))))));setMessage('บันทึกในบัญชีแล้ว ใช้ได้ทั้งสคริปต์และโพสต์');}).catch(()=>setMessage('บันทึกในเครื่องแล้ว แต่ยังส่งขึ้นบัญชีไม่สำเร็จ กรุณาเปิดหน้านี้ใหม่เพื่อลองอีกครั้ง'));
     setProfiles(list);setSelected(id);onChange(list.find(p=>p.id===id)||null);return true;
   }
   function edit(p={}){setDraft(p);setMessage('');dialog.current.showModal();}
   function save(e){e.preventDefault();try{
-    const p={...normalizeProfile(draft),id:draft.id||crypto.randomUUID()};
+    if(draft.id&&profiles.find(p=>p.id===draft.id)?.canEdit===false)throw new Error('เพจนี้ให้ผู้ดูแลเป็นผู้แก้ไขข้อมูล');
+    const p={...normalizeProfile(draft),id:draft.id||crypto.randomUUID(),canEdit:true};
     const list=draft.id?profiles.map(x=>x.id===p.id?p:x):[...profiles,p];
     if(list.length>100)throw new Error('บันทึกได้สูงสุด 100 เพจ');
     if(persist(list,p.id)){dialog.current.close();setMessage('บันทึกโปรไฟล์แล้ว');}
@@ -51,11 +53,12 @@ export default function ProfilePicker({onChange,userId}) {
   return <section className="profilePanel" aria-label="โปรไฟล์เพจ">
     <div className="profileHeading"><div><span className="eyebrow">YOUR BRAND VOICE</span><h2>เลือกเพจที่จะเล่า</h2></div><span className="badge">{profiles.length} เพจ</span></div>
     <label className="label" htmlFor="profile-select">โปรไฟล์เพจ / แบรนด์</label>
-    <select id="profile-select" className="select" value={selected} disabled={!ready} onChange={e=>persist(profiles,e.target.value)}><option value="">ไม่ใช้โปรไฟล์</option>{profiles.map(p=><option key={p.id} value={p.id}>{p.pageName}</option>)}</select>
+    <select id="profile-select" className="select" value={selected} disabled={!ready} onChange={e=>persist(profiles,e.target.value)}><option value="">ไม่ใช้โปรไฟล์</option>{profiles.map(p=><option key={p.id} value={p.id}>{p.pageName}{p.canEdit===false?' · เพจจากผู้ดูแล':''}</option>)}</select>
     {active&&<p className="profileSummary">{[active.brandName,active.personality,active.tone].filter(Boolean).join(' · ')||'เพิ่มบุคลิกและน้ำเสียง เพื่อให้สคริปต์เป็นตัวคุณ'}</p>}
-    <div className="actions"><button className="secondary" disabled={!ready} onClick={()=>edit()}>＋ เพิ่มเพจ</button>{active&&<button className="secondary" onClick={()=>edit(active)}>แก้ไขเพจ</button>}<button className="textButton" disabled={!profiles.length} onClick={exportFile}>ส่งออก</button><button className="textButton" onClick={()=>importer.current.click()}>นำเข้า</button></div>
+    {active?.canEdit===false&&<p className="muted">เพจจากผู้ดูแล — เลือกใช้สร้างสคริปต์และเตรียมโพสต์ได้ ติดต่อผู้ดูแลเมื่อต้องการแก้ข้อมูลเพจ</p>}
+    <div className="actions"><button className="secondary" disabled={!ready} onClick={()=>edit()}>＋ เพิ่มเพจ</button>{active&&active.canEdit!==false&&<button className="secondary" disabled={!ready} onClick={()=>edit(active)}>แก้ไขเพจ</button>}<button className="textButton" disabled={!profiles.length} onClick={exportFile}>ส่งออก</button><button className="textButton" disabled={!ready} onClick={()=>importer.current.click()}>นำเข้า</button></div>
     <input ref={importer} type="file" accept="application/json,.json" hidden onChange={importFile}/>
-    <p className="muted">ใช้ร่วมกันในบัญชีของคุณ • ส่งออกไฟล์เพื่อสำรองข้อมูลได้</p>
+    <p className="muted">เพจที่ผู้ดูแลบันทึกไว้ใช้ร่วมกันได้ทุกบัญชีพนักงาน • ส่งออกไฟล์เพื่อสำรองข้อมูลได้</p>
     <p role="status" className="status">{message}</p>
     <dialog ref={dialog} className="profileDialog">
       <form onSubmit={save}>
